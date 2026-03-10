@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../models/expense.dart';
+import '../models/income.dart';
 
-class ExpenseTile extends StatelessWidget {
-  final Expense expense;
+class IncomeTile extends StatelessWidget {
+  final Income income;
   final VoidCallback onDelete;
   final VoidCallback? onEdit;
 
-  const ExpenseTile({
+  const IncomeTile({
     super.key,
-    required this.expense,
+    required this.income,
     required this.onDelete,
     this.onEdit,
   });
@@ -20,7 +20,7 @@ class ExpenseTile extends StatelessWidget {
     final dateFormat = DateFormat('MMM dd, yyyy');
 
     return Dismissible(
-      key: Key(expense.key.toString()),
+      key: Key(income.key.toString()),
       direction: DismissDirection.endToStart,
       background: Container(
         alignment: Alignment.centerRight,
@@ -33,26 +33,23 @@ class ExpenseTile extends StatelessWidget {
       },
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-          child: Icon(
-            Icons.receipt_long,
-            color: Theme.of(context).colorScheme.onPrimaryContainer,
-          ),
+          backgroundColor: Colors.green.withValues(alpha: 0.2),
+          child: const Icon(Icons.account_balance_wallet, color: Colors.green),
         ),
         title: Text(
-          expense.title,
+          income.title,
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
-        subtitle: Text(dateFormat.format(expense.date)),
+        subtitle: Text(dateFormat.format(income.date)),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              currencyFormat.format(expense.amount),
+              '+ ${currencyFormat.format(income.amount)}',
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
-                color: Colors.redAccent,
+                color: Colors.green,
               ),
             ),
             if (onEdit != null)

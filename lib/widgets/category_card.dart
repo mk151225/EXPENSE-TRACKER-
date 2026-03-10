@@ -10,10 +10,7 @@ class CategoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currencyFormat = NumberFormat.currency(
-      symbol: '\$',
-      decimalDigits: 2,
-    );
+    final currencyFormat = NumberFormat.currency(symbol: '₹', decimalDigits: 2);
     final theme = Theme.of(context);
 
     // Dynamic color based on balance
@@ -40,26 +37,41 @@ class CategoryCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _buildInfoColumn(
-                    'Income',
-                    currencyFormat.format(category.income),
-                    Colors.blueAccent,
-                  ),
-                  _buildInfoColumn(
-                    'Expense',
-                    currencyFormat.format(category.totalExpenses),
-                    Colors.orangeAccent,
-                  ),
-                  _buildInfoColumn(
-                    'Balance',
-                    currencyFormat.format(category.remainingBalance),
-                    balanceColor,
-                  ),
-                ],
-              ),
+              if (category.isLocked)
+                const Row(
+                  children: [
+                    Icon(Icons.lock, color: Colors.grey),
+                    SizedBox(width: 8),
+                    Text(
+                      'Locked',
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                )
+              else
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _buildInfoColumn(
+                      'Income',
+                      currencyFormat.format(category.totalIncome),
+                      Colors.blueAccent,
+                    ),
+                    _buildInfoColumn(
+                      'Expense',
+                      currencyFormat.format(category.totalExpenses),
+                      Colors.orangeAccent,
+                    ),
+                    _buildInfoColumn(
+                      'Balance',
+                      currencyFormat.format(category.remainingBalance),
+                      balanceColor,
+                    ),
+                  ],
+                ),
             ],
           ),
         ),

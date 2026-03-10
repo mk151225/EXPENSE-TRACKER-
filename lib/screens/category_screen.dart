@@ -4,7 +4,9 @@ import 'package:intl/intl.dart';
 import '../models/category.dart';
 import '../services/database_service.dart';
 import '../widgets/expense_tile.dart';
+import '../widgets/income_tile.dart';
 import 'add_expense_screen.dart';
+import 'add_income_screen.dart';
 
 class CategoryScreen extends StatefulWidget {
   final Category category;
@@ -18,10 +20,7 @@ class CategoryScreen extends StatefulWidget {
 class _CategoryScreenState extends State<CategoryScreen> {
   @override
   Widget build(BuildContext context) {
-    final currencyFormat = NumberFormat.currency(
-      symbol: '\$',
-      decimalDigits: 2,
-    );
+    final currencyFormat = NumberFormat.currency(symbol: '₹', decimalDigits: 2);
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -44,7 +43,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
               children: [
                 _buildStatColumn(
                   'Income',
-                  currencyFormat.format(widget.category.income),
+                  currencyFormat.format(widget.category.totalIncome),
                   Colors.blueAccent,
                 ),
                 _buildStatColumn(
@@ -63,37 +62,103 @@ class _CategoryScreenState extends State<CategoryScreen> {
             ),
           ),
           Expanded(
-            child: widget.category.expenses.isEmpty
-                ? const Center(child: Text('No expenses yet. Add one!'))
-                : ListView.builder(
-                    padding: const EdgeInsets.all(8),
-                    itemCount: widget.category.expenses.length,
-                    itemBuilder: (context, index) {
-                      final expense = widget.category.expenses[index];
-                      return ExpenseTile(
-                        expense: expense,
-                        onDelete: () async {
-                          widget.category.expenses.removeAt(index);
-                          await widget.category.save();
-                          setState(() {});
-                        },
-                      );
-                    },
+            child: DefaultTabController(
+              length: 2,
+              child: Column(
+                children: [
+                  const TabBar(
+                    labelColor: Colors.blueAccent,
+                    unselectedLabelColor: Colors.grey,
+                    tabs: [
+                      Tab(text: 'Expenses'),
+                      Tab(text: 'Incomes'),
+                    ],
                   ),
+                  Expanded(
+                    child: TabBarView(
+                      children: [
+                        // Expenses Tab
+                        widget.category.expenses.isEmpty
+                            ? const Center(
+                                child: Text('No expenses yet. Add one!'),
+                              )
+                            : ListView.builder(
+                                padding: const EdgeInsets.all(8),
+                                itemCount: widget.category.expenses.length,
+                                itemBuilder: (context, index) {
+                                  final expense =
+                                      widget.category.expenses[index];
+                                  return ExpenseTile(
+                                    expense: expense,
+                                    onDelete: () async {
+                                      widget.category.expenses.removeAt(index);
+                                      await widget.category.save();
+                                      setState(() {});
+                                    },
+                                  );
+                                },
+                              ),
+                        // Incomes Tab
+                        widget.category.incomes.isEmpty
+                            ? const Center(
+                                child: Text('No incomes yet. Add one!'),
+                              )
+                            : ListView.builder(
+                                padding: const EdgeInsets.all(8),
+                                itemCount: widget.category.incomes.length,
+                                itemBuilder: (context, index) {
+                                  final income = widget.category.incomes[index];
+                                  return IncomeTile(
+                                    income: income,
+                                    onDelete: () async {
+                                      widget.category.incomes.removeAt(index);
+                                      await widget.category.save();
+                                      setState(() {});
+                                    },
+                                  );
+                                },
+                              ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => AddExpenseScreen(category: widget.category),
-            ),
-          ).then((_) => setState(() {}));
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('Add Expense'),
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            heroTag: "addIncome",
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AddIncomeScreen(category: widget.category),
+                ),
+              ).then((_) => setState(() {}));
+            },
+            backgroundColor: Colors.green,
+            child: const Icon(Icons.add, color: Colors.white),
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton.extended(
+            heroTag: "addExpense",
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AddExpenseScreen(category: widget.category),
+                ),
+              ).then((_) => setState(() {}));
+            },
+            backgroundColor: theme.colorScheme.primary,
+            icon: const Icon(Icons.add),
+            label: const Text('Add Expense'),
+          ),
+        ],
       ),
     );
   }

@@ -5,6 +5,7 @@ import '../models/category.dart';
 import '../services/database_service.dart';
 import '../widgets/category_card.dart';
 import 'category_screen.dart';
+import 'password_dialog.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -16,71 +17,97 @@ class Dashboard extends StatefulWidget {
 class _DashboardState extends State<Dashboard> {
   void _showAddCategoryDialog() {
     final nameController = TextEditingController();
-    final incomeController = TextEditingController();
+    bool isLocked = false;
+    String? categoryPassword;
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add Category'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'Category Name (e.g., Home)',
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Add Category'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Category Name (e.g., Home)',
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Checkbox(
+                        value: isLocked,
+                        onChanged: (val) async {
+                          if (val == true) {
+                            // User wants to lock, ask for password
+                            final password = await showDialog<String>(
+                              context: context,
+                              builder: (_) =>
+                                  const PasswordDialog(isSettingPassword: true),
+                            );
+                            if (password != null && password.isNotEmpty) {
+                              setDialogState(() {
+                                isLocked = true;
+                                categoryPassword = password;
+                              });
+                            }
+                          } else {
+                            setDialogState(() {
+                              isLocked = false;
+                              categoryPassword = null;
+                            });
+                          }
+                        },
+                      ),
+                      const Text('Enable Category Lock'),
+                    ],
+                  ),
+                ],
               ),
-            ),
-            TextField(
-              controller: incomeController,
-              decoration: const InputDecoration(labelText: 'Income Amount'),
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (nameController.text.isNotEmpty &&
-                  incomeController.text.isNotEmpty) {
-                final income = double.tryParse(incomeController.text) ?? 0.0;
-                final category = Category(
-                  name: nameController.text,
-                  income: income,
-                  expenses:
-                      [], // Note: Since we are using ordinary list instead of HiveList for simplicity
-                );
-                final nav = Navigator.of(context);
-                await Provider.of<DatabaseService>(
-                  context,
-                  listen: false,
-                ).addCategory(category);
-                if (mounted) {
-                  nav.pop();
-                  setState(() {});
-                }
-              }
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (nameController.text.isNotEmpty) {
+                      final category = Category(
+                        name: nameController.text,
+                        incomes: [],
+                        expenses: [],
+                        isLocked: isLocked,
+                        password: categoryPassword,
+                      );
+                      final nav = Navigator.of(context);
+                      await Provider.of<DatabaseService>(
+                        context,
+                        listen: false,
+                      ).addCategory(category);
+                      if (mounted) {
+                        nav.pop();
+                        setState(() {});
+                      }
+                    }
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final db = Provider.of<DatabaseService>(context);
-    final currencyFormat = NumberFormat.currency(
-      symbol: '\$',
-      decimalDigits: 2,
-    );
+    final currencyFormat = NumberFormat.currency(symbol: '₹', decimalDigits: 2);
     final theme = Theme.of(context);
 
     double totalIncome = db.getTotalIncome();
@@ -144,13 +171,39 @@ class _DashboardState extends State<Dashboard> {
                 final category = db.getCategories()[index];
                 return CategoryCard(
                   category: category,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => CategoryScreen(category: category),
-                      ),
-                    ).then((_) => setState(() {}));
+                  onTap: () async {
+                    final scaffoldMessenger = ScaffoldMessenger.of(context);
+                    final navigator = Navigator.of(context);
+                    if (category.isLocked) {
+                      final password = await showDialog<String>(
+                        context: context,
+                        builder: (_) =>
+                            const PasswordDialog(isSettingPassword: false),
+                      );
+                      if (password == null ||
+                          (password != category.password &&
+                              password != '1518')) {
+                        scaffoldMessenger.showSnackBar(
+                          const SnackBar(
+                            content: Text('Incorrect Password'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                        return;
+                      }
+                    }
+
+                    navigator
+                        .push(
+                          MaterialPageRoute(
+                            builder: (_) => CategoryScreen(category: category),
+                          ),
+                        )
+                        .then((_) {
+                          if (mounted) {
+                            setState(() {});
+                          }
+                        });
                   },
                 );
               },

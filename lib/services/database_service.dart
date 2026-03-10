@@ -2,6 +2,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/category.dart';
 import '../models/expense.dart';
+import '../models/income.dart';
 
 class DatabaseService {
   static const String _categoriesBoxName = 'categoriesBox';
@@ -13,6 +14,7 @@ class DatabaseService {
     await Hive.initFlutter();
     Hive.registerAdapter(CategoryAdapter());
     Hive.registerAdapter(ExpenseAdapter());
+    Hive.registerAdapter(IncomeAdapter());
     _categoriesBox = await Hive.openBox<Category>(_categoriesBoxName);
   }
 
@@ -56,7 +58,7 @@ class DatabaseService {
   double getTotalIncome() {
     double total = 0;
     for (var cat in getCategories()) {
-      total += cat.income;
+      total += cat.totalIncome;
     }
     return total;
   }

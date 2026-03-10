@@ -1,5 +1,6 @@
 import 'package:hive/hive.dart';
 import 'expense.dart';
+import 'income.dart';
 
 part 'category.g.dart';
 
@@ -9,12 +10,32 @@ class Category extends HiveObject {
   String name;
 
   @HiveField(1)
-  double income;
+  List<Income> incomes;
 
   @HiveField(2)
   List<Expense> expenses;
 
-  Category({required this.name, required this.income, required this.expenses});
+  @HiveField(3)
+  bool isLocked;
+
+  @HiveField(4)
+  String? password;
+
+  Category({
+    required this.name,
+    required this.incomes,
+    required this.expenses,
+    this.isLocked = false,
+    this.password,
+  });
+
+  double get totalIncome {
+    double total = 0;
+    for (var income in incomes) {
+      total += income.amount;
+    }
+    return total;
+  }
 
   double get totalExpenses {
     double total = 0;
@@ -25,6 +46,6 @@ class Category extends HiveObject {
   }
 
   double get remainingBalance {
-    return income - totalExpenses;
+    return totalIncome - totalExpenses;
   }
 }

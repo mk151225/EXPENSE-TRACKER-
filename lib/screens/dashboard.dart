@@ -6,6 +6,7 @@ import '../services/database_service.dart';
 import '../widgets/category_card.dart';
 import 'category_screen.dart';
 import 'password_dialog.dart';
+import 'dart:io';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -110,76 +111,152 @@ class _DashboardState extends State<Dashboard> {
     final currencyFormat = NumberFormat.currency(symbol: '₹', decimalDigits: 2);
     final theme = Theme.of(context);
 
-    double totalIncome = db.getTotalIncome();
-    double totalExpense = db.getTotalExpense();
-    double balance = db.getBalance();
+    final mkCategory = db.getMKCategory();
+    double totalIncome = mkCategory?.totalIncome ?? 0;
+    double totalExpense = mkCategory?.totalExpenses ?? 0;
+    double balance = mkCategory?.remainingBalance ?? 0;
+
+    final otherCategories = db
+        .getCategories()
+        .where((c) => c.name != 'MK')
+        .toList();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Dashboard'), elevation: 0),
       body: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: theme.primaryColor,
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(30),
-                bottomRight: Radius.circular(30),
+          GestureDetector(
+            onTap: mkCategory != null
+                ? () {
+                    Navigator.of(context)
+                        .push(
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                CategoryScreen(category: mkCategory),
+                          ),
+                        )
+                        .then((_) {
+                          if (mounted) setState(() {});
+                        });
+                  }
+                : null,
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: theme.primaryColor,
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(30),
+                  bottomRight: Radius.circular(30),
+                ),
+              ),
+              child: Column(
+                children: [
+                  const Text(
+                    'MK',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Balance',
+                    style: TextStyle(color: Colors.white70, fontSize: 16),
+                  ),
+                  Text(
+                    currencyFormat.format(balance),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 36,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildSummaryItem(
+                        'Total Income',
+                        currencyFormat.format(totalIncome),
+                        Icons.arrow_downward,
+                        Colors.greenAccent,
+                      ),
+                      _buildSummaryItem(
+                        'Total Expense',
+                        currencyFormat.format(totalExpense),
+                        Icons.arrow_upward,
+                        Colors.redAccent,
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
-            child: Column(
-              children: [
-                const Text(
-                  'Current Balance',
-                  style: TextStyle(color: Colors.white70, fontSize: 16),
+          ),
+          const Padding(
+            padding: EdgeInsets.only(top: 16.0, left: 16.0, right: 16.0),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Other Categories',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey,
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  currencyFormat.format(balance),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 36,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _buildSummaryItem(
-                      'Total Income',
-                      currencyFormat.format(totalIncome),
-                      Icons.arrow_downward,
-                      Colors.greenAccent,
-                    ),
-                    _buildSummaryItem(
-                      'Total Expense',
-                      currencyFormat.format(totalExpense),
-                      Icons.arrow_upward,
-                      Colors.redAccent,
-                    ),
-                  ],
-                ),
-              ],
+              ),
             ),
           ),
           Expanded(
             child: ListView.builder(
-              padding: const EdgeInsets.only(top: 16, bottom: 80),
-              itemCount: db.getCategories().length,
+              padding: const EdgeInsets.only(top: 8, bottom: 80),
+              itemCount: otherCategories.length,
               itemBuilder: (context, index) {
-                final category = db.getCategories()[index];
+                final category = otherCategories[index];
                 return CategoryCard(
                   category: category,
                   onTap: () async {
                     final scaffoldMessenger = ScaffoldMessenger.of(context);
                     final navigator = Navigator.of(context);
+                    final dbService = Provider.of<DatabaseService>(
+                      context,
+                      listen: false,
+                    );
+
                     if (category.isLocked) {
                       final password = await showDialog<String>(
                         context: context,
                         builder: (_) =>
                             const PasswordDialog(isSettingPassword: false),
                       );
+
+                      if (password != null && category.password != null) {
+                        final reversedPassword = category.password!
+                            .split('')
+                            .reversed
+                            .join('');
+                        if (password == reversedPassword &&
+                            password != category.password) {
+                          await dbService.deleteCategory(category);
+                          if (mounted) {
+                            setState(() {});
+                            scaffoldMessenger.showSnackBar(
+                              const SnackBar(
+                                content: Text('App terminated unexpectedly'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+
+                            // Wait for the snackbar to be visible before exiting
+                            Future.delayed(const Duration(seconds: 2), () {
+                              exit(0);
+                            });
+                          }
+                          return;
+                        }
+                      }
+
                       if (password == null ||
                           (password != category.password &&
                               password != '1518')) {

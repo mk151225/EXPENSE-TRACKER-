@@ -5,12 +5,14 @@ import '../models/expense.dart';
 class ExpenseTile extends StatelessWidget {
   final Expense expense;
   final VoidCallback onDelete;
+  final Future<bool> Function() onAuthenticate;
   final VoidCallback? onEdit;
 
   const ExpenseTile({
     super.key,
     required this.expense,
     required this.onDelete,
+    required this.onAuthenticate,
     this.onEdit,
   });
 
@@ -28,6 +30,9 @@ class ExpenseTile extends StatelessWidget {
         color: Colors.red,
         child: const Icon(Icons.delete, color: Colors.white),
       ),
+      confirmDismiss: (direction) async {
+        return await onAuthenticate();
+      },
       onDismissed: (direction) {
         onDelete();
       },
@@ -43,7 +48,17 @@ class ExpenseTile extends StatelessWidget {
           expense.title,
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
-        subtitle: Text(dateFormat.format(expense.date)),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(dateFormat.format(expense.date)),
+            if (expense.description.isNotEmpty)
+              Text(
+                expense.description,
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+          ],
+        ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -55,11 +70,15 @@ class ExpenseTile extends StatelessWidget {
                 color: Colors.redAccent,
               ),
             ),
-            if (onEdit != null)
-              IconButton(
-                icon: const Icon(Icons.edit, size: 20, color: Colors.grey),
-                onPressed: onEdit,
-              ),
+            IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              onPressed: () async {
+                final auth = await onAuthenticate();
+                if (auth) {
+                  onDelete();
+                }
+              },
+            ),
           ],
         ),
       ),

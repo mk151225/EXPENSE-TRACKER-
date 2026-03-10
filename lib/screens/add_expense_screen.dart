@@ -15,6 +15,7 @@ class AddExpenseScreen extends StatefulWidget {
 class _AddExpenseScreenState extends State<AddExpenseScreen> {
   final _titleController = TextEditingController();
   final _amountController = TextEditingController();
+  final _descriptionController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
 
   void _presentDatePicker() async {
@@ -34,6 +35,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   void _saveExpense() async {
     final title = _titleController.text;
     final amountText = _amountController.text;
+    final description = _descriptionController.text;
 
     if (title.isEmpty || amountText.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -50,8 +52,12 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       return;
     }
 
-    final expense = Expense(title: title, amount: amount, date: _selectedDate);
-
+    final expense = Expense(
+      title: title,
+      amount: amount,
+      date: _selectedDate,
+      description: description,
+    );
     widget.category.expenses.add(expense);
     await widget.category.save(); // Save to Hive
 
@@ -79,6 +85,13 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               decoration: const InputDecoration(labelText: 'Amount'),
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _descriptionController,
+              decoration: const InputDecoration(
+                labelText: 'Description (Optional)',
               ),
             ),
             const SizedBox(height: 24),

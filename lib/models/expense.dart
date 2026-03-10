@@ -13,5 +13,13 @@ class Expense extends HiveObject {
   @HiveField(2)
   DateTime date;
 
-  Expense({required this.title, required this.amount, required this.date});
+  @HiveField(3)
+  String description;
+
+  Expense({
+    required this.title,
+    required this.amount,
+    required this.date,
+    required this.description,
+  });
 }

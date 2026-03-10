@@ -16,6 +16,26 @@ class DatabaseService {
     Hive.registerAdapter(ExpenseAdapter());
     Hive.registerAdapter(IncomeAdapter());
     _categoriesBox = await Hive.openBox<Category>(_categoriesBoxName);
+
+    // Ensure main 'MK' category exists
+    if (!hasMKCategory()) {
+      await _categoriesBox!.add(
+        Category(name: 'MK', incomes: [], expenses: [], isLocked: false),
+      );
+    }
+  }
+
+  bool hasMKCategory() {
+    return _categoriesBox?.values.any((c) => c.name == 'MK') ?? false;
+  }
+
+  Category? getMKCategory() {
+    if (_categoriesBox == null) return null;
+    try {
+      return _categoriesBox!.values.firstWhere((c) => c.name == 'MK');
+    } catch (e) {
+      return null;
+    }
   }
 
   // --- PIN Methods ---

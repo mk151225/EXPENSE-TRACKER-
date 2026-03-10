@@ -5,12 +5,14 @@ import '../models/income.dart';
 class IncomeTile extends StatelessWidget {
   final Income income;
   final VoidCallback onDelete;
+  final Future<bool> Function() onAuthenticate;
   final VoidCallback? onEdit;
 
   const IncomeTile({
     super.key,
     required this.income,
     required this.onDelete,
+    required this.onAuthenticate,
     this.onEdit,
   });
 
@@ -28,6 +30,9 @@ class IncomeTile extends StatelessWidget {
         color: Colors.red,
         child: const Icon(Icons.delete, color: Colors.white),
       ),
+      confirmDismiss: (direction) async {
+        return await onAuthenticate();
+      },
       onDismissed: (direction) {
         onDelete();
       },
@@ -40,7 +45,17 @@ class IncomeTile extends StatelessWidget {
           income.title,
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
-        subtitle: Text(dateFormat.format(income.date)),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(dateFormat.format(income.date)),
+            if (income.description.isNotEmpty)
+              Text(
+                income.description,
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+          ],
+        ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -52,11 +67,15 @@ class IncomeTile extends StatelessWidget {
                 color: Colors.green,
               ),
             ),
-            if (onEdit != null)
-              IconButton(
-                icon: const Icon(Icons.edit, size: 20, color: Colors.grey),
-                onPressed: onEdit,
-              ),
+            IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              onPressed: () async {
+                final auth = await onAuthenticate();
+                if (auth) {
+                  onDelete();
+                }
+              },
+            ),
           ],
         ),
       ),

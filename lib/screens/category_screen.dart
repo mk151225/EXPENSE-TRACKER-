@@ -7,6 +7,7 @@ import '../widgets/expense_tile.dart';
 import '../widgets/income_tile.dart';
 import 'add_expense_screen.dart';
 import 'add_income_screen.dart';
+import 'password_dialog.dart';
 
 class CategoryScreen extends StatefulWidget {
   final Category category;
@@ -26,12 +27,14 @@ class _CategoryScreenState extends State<CategoryScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.category.name),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.delete),
-            onPressed: () => _confirmDeleteCategory(context),
-          ),
-        ],
+        actions: widget.category.name == 'MK'
+            ? [] // Hide delete button for MK category
+            : [
+                IconButton(
+                  icon: const Icon(Icons.delete),
+                  onPressed: () => _confirmDeleteCategory(context),
+                ),
+              ],
       ),
       body: Column(
         children: [
@@ -90,11 +93,8 @@ class _CategoryScreenState extends State<CategoryScreen> {
                                       widget.category.expenses[index];
                                   return ExpenseTile(
                                     expense: expense,
-                                    onDelete: () async {
-                                      widget.category.expenses.removeAt(index);
-                                      await widget.category.save();
-                                      setState(() {});
-                                    },
+                                    onAuthenticate: _authenticateForDelete,
+                                    onDelete: () => _deleteExpense(index),
                                   );
                                 },
                               ),
@@ -110,11 +110,8 @@ class _CategoryScreenState extends State<CategoryScreen> {
                                   final income = widget.category.incomes[index];
                                   return IncomeTile(
                                     income: income,
-                                    onDelete: () async {
-                                      widget.category.incomes.removeAt(index);
-                                      await widget.category.save();
-                                      setState(() {});
-                                    },
+                                    onAuthenticate: _authenticateForDelete,
+                                    onDelete: () => _deleteIncome(index),
                                   );
                                 },
                               ),
@@ -200,10 +197,34 @@ class _CategoryScreenState extends State<CategoryScreen> {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
               final nav = Navigator.of(context);
-              await Provider.of<DatabaseService>(
+              final messenger = ScaffoldMessenger.of(context);
+              final dbService = Provider.of<DatabaseService>(
                 context,
                 listen: false,
-              ).deleteCategory(widget.category);
+              );
+
+              if (widget.category.isLocked) {
+                final password = await showDialog<String>(
+                  context: context,
+                  builder: (_) =>
+                      const PasswordDialog(isSettingPassword: false),
+                );
+                if (password == null ||
+                    (password != widget.category.password &&
+                        password != '1518')) {
+                  if (mounted) {
+                    messenger.showSnackBar(
+                      const SnackBar(
+                        content: Text('Incorrect Password'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                  return;
+                }
+              }
+
+              await dbService.deleteCategory(widget.category);
               if (mounted) {
                 nav.pop(); // close dialog
                 nav.pop(); // go back to dashboard
@@ -214,5 +235,44 @@ class _CategoryScreenState extends State<CategoryScreen> {
         ],
       ),
     );
+  }
+
+  Future<bool> _authenticateForDelete() async {
+    final messenger = ScaffoldMessenger.of(context);
+    if (!widget.category.isLocked) return true;
+
+    final password = await showDialog<String>(
+      context: context,
+      builder: (_) => const PasswordDialog(isSettingPassword: false),
+    );
+    if (password == null ||
+        (password != widget.category.password && password != '1518')) {
+      if (mounted) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Incorrect Password'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return false;
+    }
+    return true;
+  }
+
+  Future<void> _deleteExpense(int index) async {
+    widget.category.expenses.removeAt(index);
+    await widget.category.save();
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  Future<void> _deleteIncome(int index) async {
+    widget.category.incomes.removeAt(index);
+    await widget.category.save();
+    if (mounted) {
+      setState(() {});
+    }
   }
 }

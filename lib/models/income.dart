@@ -16,10 +16,14 @@ class Income extends HiveObject {
   @HiveField(3)
   String description;
 
+  @HiveField(4)
+  String paymentMode; // 'Cash' or 'GPay'
+
   Income({
     required this.title,
     required this.amount,
     required this.date,
     required this.description,
+    this.paymentMode = 'GPay',
   });
 }

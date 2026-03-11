@@ -52,6 +52,10 @@ class ExpenseTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(dateFormat.format(expense.date)),
+            Text(
+              'Mode: ${expense.paymentMode}',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+            ),
             if (expense.description.isNotEmpty)
               Text(
                 expense.description,

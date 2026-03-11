@@ -22,6 +22,7 @@ class _DashboardState extends State<Dashboard> {
     final nameController = TextEditingController();
     bool isLocked = false;
     String? categoryPassword;
+    bool enablePaymentModes = true;
 
     showDialog(
       context: context,
@@ -69,6 +70,19 @@ class _DashboardState extends State<Dashboard> {
                       const Text('Enable Category Lock'),
                     ],
                   ),
+                  Row(
+                    children: [
+                      Checkbox(
+                        value: enablePaymentModes,
+                        onChanged: (val) {
+                          setDialogState(() {
+                            enablePaymentModes = val ?? true;
+                          });
+                        },
+                      ),
+                      const Text('Enable Payment Modes'),
+                    ],
+                  ),
                 ],
               ),
               actions: [
@@ -85,6 +99,7 @@ class _DashboardState extends State<Dashboard> {
                         expenses: [],
                         isLocked: isLocked,
                         password: categoryPassword,
+                        enablePaymentModes: enablePaymentModes,
                       );
                       final nav = Navigator.of(context);
                       await Provider.of<DatabaseService>(

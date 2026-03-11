@@ -22,6 +22,7 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
   final _amountController = TextEditingController();
   final _descriptionController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
+  String _selectedPaymentMode = 'GPay';
 
   void _presentDatePicker() async {
     final pickedDate = await showDatePicker(
@@ -62,6 +63,7 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
       amount: amount,
       date: _selectedDate,
       description: description,
+      paymentMode: _selectedPaymentMode,
     );
     widget.category.incomes.add(income);
     await widget.category.save(); // Save to Hive
@@ -98,6 +100,39 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
               decoration: const InputDecoration(
                 labelText: 'Description (Optional)',
               ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Payment Mode',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: RadioListTile<String>(
+                    title: const Text('GPay'),
+                    value: 'GPay',
+                    groupValue: _selectedPaymentMode,
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedPaymentMode = value!;
+                      });
+                    },
+                  ),
+                ),
+                Expanded(
+                  child: RadioListTile<String>(
+                    title: const Text('Cash'),
+                    value: 'Cash',
+                    groupValue: _selectedPaymentMode,
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedPaymentMode = value!;
+                      });
+                    },
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 24),
             Row(

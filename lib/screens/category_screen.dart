@@ -44,27 +44,53 @@ class _CategoryScreenState extends State<CategoryScreen> {
       body: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             color: theme.primaryColor,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+            child: Column(
               children: [
-                _buildStatColumn(
-                  'Income',
-                  currencyFormat.format(widget.category.totalIncome),
-                  Colors.blueAccent,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildStatColumn(
+                      'Total w/o Expense',
+                      currencyFormat.format(widget.category.totalWithoutExpense),
+                      Colors.blueAccent,
+                    ),
+                    _buildStatColumn(
+                      'Total Balance',
+                      currencyFormat.format(widget.category.remainingBalance),
+                      widget.category.remainingBalance >= 0
+                          ? Colors.greenAccent
+                          : Colors.redAccent,
+                    ),
+                    _buildStatColumn(
+                      'Total Expense',
+                      currencyFormat.format(widget.category.totalExpenses),
+                      Colors.orangeAccent,
+                    ),
+                  ],
                 ),
-                _buildStatColumn(
-                  'Expenses',
-                  currencyFormat.format(widget.category.totalExpenses),
-                  Colors.orangeAccent,
-                ),
-                _buildStatColumn(
-                  'Remaining',
-                  currencyFormat.format(widget.category.remainingBalance),
-                  widget.category.remainingBalance >= 0
-                      ? Colors.greenAccent
-                      : Colors.redAccent,
+                const SizedBox(height: 16),
+                const Divider(color: Colors.white24, height: 1),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildStatColumn(
+                      'GPay Balance',
+                      currencyFormat.format(widget.category.gpayBalance),
+                      widget.category.gpayBalance >= 0
+                          ? Colors.cyanAccent
+                          : Colors.redAccent,
+                    ),
+                    _buildStatColumn(
+                      'Cash Balance',
+                      currencyFormat.format(widget.category.cashBalance),
+                      widget.category.cashBalance >= 0
+                          ? Colors.amberAccent
+                          : Colors.redAccent,
+                    ),
+                  ],
                 ),
               ],
             ),

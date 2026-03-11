@@ -49,6 +49,10 @@ class IncomeTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(dateFormat.format(income.date)),
+            Text(
+              'Mode: ${income.paymentMode}',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+            ),
             if (income.description.isNotEmpty)
               Text(
                 income.description,

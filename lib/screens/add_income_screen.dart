@@ -5,8 +5,13 @@ import '../models/income.dart';
 
 class AddIncomeScreen extends StatefulWidget {
   final Category category;
+  final bool isSecretMode;
 
-  const AddIncomeScreen({super.key, required this.category});
+  const AddIncomeScreen({
+    super.key,
+    required this.category,
+    required this.isSecretMode,
+  });
 
   @override
   State<AddIncomeScreen> createState() => _AddIncomeScreenState();

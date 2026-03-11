@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/database_service.dart';
+import '../services/session_manager.dart';
 import 'dashboard.dart';
 
 class LockScreen extends StatefulWidget {
@@ -55,16 +56,34 @@ class _LockScreenState extends State<LockScreen> {
     if (_isSettingPin) {
       await db.savePin(_pin);
       if (mounted) {
-        Navigator.of(
-          context,
-        ).pushReplacement(MaterialPageRoute(builder: (_) => const Dashboard()));
+        SessionManager.instance.startSession();
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => const Dashboard(isSecretMode: false),
+          ),
+        );
       }
     } else {
+      if (_pin == '9786') {
+        if (mounted) {
+          SessionManager.instance.startSession();
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => const Dashboard(isSecretMode: true),
+            ),
+          );
+        }
+        return;
+      }
+
       bool isCorrect = await db.verifyPin(_pin);
       if (isCorrect) {
         if (mounted) {
+          SessionManager.instance.startSession();
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const Dashboard()),
+            MaterialPageRoute(
+              builder: (_) => const Dashboard(isSecretMode: false),
+            ),
           );
         }
       } else {

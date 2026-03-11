@@ -9,7 +9,9 @@ import 'password_dialog.dart';
 import 'dart:io';
 
 class Dashboard extends StatefulWidget {
-  const Dashboard({super.key});
+  final bool isSecretMode;
+
+  const Dashboard({super.key, required this.isSecretMode});
 
   @override
   State<Dashboard> createState() => _DashboardState();
@@ -88,7 +90,7 @@ class _DashboardState extends State<Dashboard> {
                       await Provider.of<DatabaseService>(
                         context,
                         listen: false,
-                      ).addCategory(category);
+                      ).addCategory(category, isSecret: widget.isSecretMode);
                       if (mounted) {
                         nav.pop();
                         setState(() {});
@@ -111,89 +113,100 @@ class _DashboardState extends State<Dashboard> {
     final currencyFormat = NumberFormat.currency(symbol: '₹', decimalDigits: 2);
     final theme = Theme.of(context);
 
-    final mkCategory = db.getMKCategory();
-    double totalIncome = mkCategory?.totalIncome ?? 0;
-    double totalExpense = mkCategory?.totalExpenses ?? 0;
-    double balance = mkCategory?.remainingBalance ?? 0;
+    // Only fetch MK category if we are in secret mode or if it exists
+    final mkCategory = db.getMKCategory(isSecret: widget.isSecretMode);
+    double totalIncome = mkCategory != null
+        ? mkCategory.totalIncome
+        : db.getTotalIncome(isSecret: widget.isSecretMode);
+    double totalExpense = mkCategory != null
+        ? mkCategory.totalExpenses
+        : db.getTotalExpense(isSecret: widget.isSecretMode);
+    double balance = mkCategory != null
+        ? mkCategory.remainingBalance
+        : db.getBalance(isSecret: widget.isSecretMode);
 
     final otherCategories = db
-        .getCategories()
+        .getCategories(isSecret: widget.isSecretMode)
         .where((c) => c.name != 'MK')
         .toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Dashboard'), elevation: 0),
+      appBar: AppBar(
+        title: Text(widget.isSecretMode ? 'MK Personal Wallet' : 'Dashboard'),
+        elevation: 0,
+      ),
       body: Column(
         children: [
-          GestureDetector(
-            onTap: mkCategory != null
-                ? () {
-                    Navigator.of(context)
-                        .push(
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                CategoryScreen(category: mkCategory),
-                          ),
-                        )
-                        .then((_) {
-                          if (mounted) setState(() {});
-                        });
-                  }
-                : null,
-            child: Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: theme.primaryColor,
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(30),
-                  bottomRight: Radius.circular(30),
+          if (mkCategory != null)
+            GestureDetector(
+              onTap: () {
+                Navigator.of(context)
+                    .push(
+                      MaterialPageRoute(
+                        builder: (_) => CategoryScreen(
+                          category: mkCategory,
+                          isSecretMode: widget.isSecretMode,
+                        ),
+                      ),
+                    )
+                    .then((_) {
+                      if (mounted) setState(() {});
+                    });
+              },
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: theme.primaryColor,
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(30),
+                    bottomRight: Radius.circular(30),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    const Text(
+                      'MK',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Balance',
+                      style: TextStyle(color: Colors.white70, fontSize: 16),
+                    ),
+                    Text(
+                      currencyFormat.format(balance),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 36,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildSummaryItem(
+                          'Total Income',
+                          currencyFormat.format(totalIncome),
+                          Icons.arrow_downward,
+                          Colors.greenAccent,
+                        ),
+                        _buildSummaryItem(
+                          'Total Expense',
+                          currencyFormat.format(totalExpense),
+                          Icons.arrow_upward,
+                          Colors.redAccent,
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-              child: Column(
-                children: [
-                  const Text(
-                    'MK',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Balance',
-                    style: TextStyle(color: Colors.white70, fontSize: 16),
-                  ),
-                  Text(
-                    currencyFormat.format(balance),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _buildSummaryItem(
-                        'Total Income',
-                        currencyFormat.format(totalIncome),
-                        Icons.arrow_downward,
-                        Colors.greenAccent,
-                      ),
-                      _buildSummaryItem(
-                        'Total Expense',
-                        currencyFormat.format(totalExpense),
-                        Icons.arrow_upward,
-                        Colors.redAccent,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
             ),
-          ),
           const Padding(
             padding: EdgeInsets.only(top: 16.0, left: 16.0, right: 16.0),
             child: Align(
@@ -273,7 +286,10 @@ class _DashboardState extends State<Dashboard> {
                     navigator
                         .push(
                           MaterialPageRoute(
-                            builder: (_) => CategoryScreen(category: category),
+                            builder: (_) => CategoryScreen(
+                              category: category,
+                              isSecretMode: widget.isSecretMode,
+                            ),
                           ),
                         )
                         .then((_) {

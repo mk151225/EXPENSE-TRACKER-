@@ -5,8 +5,13 @@ import '../models/expense.dart';
 
 class AddExpenseScreen extends StatefulWidget {
   final Category category;
+  final bool isSecretMode;
 
-  const AddExpenseScreen({super.key, required this.category});
+  const AddExpenseScreen({
+    super.key,
+    required this.category,
+    required this.isSecretMode,
+  });
 
   @override
   State<AddExpenseScreen> createState() => _AddExpenseScreenState();

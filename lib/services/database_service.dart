@@ -6,9 +6,11 @@ import '../models/income.dart';
 
 class DatabaseService {
   static const String _categoriesBoxName = 'categoriesBox';
+  static const String _secretCategoriesBoxName = 'secretCategoriesBox';
   static const String _pinKey = 'user_pin';
 
   Box<Category>? _categoriesBox;
+  Box<Category>? _secretCategoriesBox;
 
   Future<void> init() async {
     await Hive.initFlutter();
@@ -16,23 +18,35 @@ class DatabaseService {
     Hive.registerAdapter(ExpenseAdapter());
     Hive.registerAdapter(IncomeAdapter());
     _categoriesBox = await Hive.openBox<Category>(_categoriesBoxName);
+    _secretCategoriesBox = await Hive.openBox<Category>(
+      _secretCategoriesBoxName,
+    );
 
-    // Ensure main 'MK' category exists
-    if (!hasMKCategory()) {
+    // Ensure main 'MK' category exists in Normal Wallet
+    if (!hasMKCategory(isSecret: false)) {
       await _categoriesBox!.add(
+        Category(name: 'MK', incomes: [], expenses: [], isLocked: false),
+      );
+    }
+
+    // Ensure main 'MK' category exists in Secret Wallet
+    if (!hasMKCategory(isSecret: true)) {
+      await _secretCategoriesBox!.add(
         Category(name: 'MK', incomes: [], expenses: [], isLocked: false),
       );
     }
   }
 
-  bool hasMKCategory() {
-    return _categoriesBox?.values.any((c) => c.name == 'MK') ?? false;
+  bool hasMKCategory({required bool isSecret}) {
+    final box = isSecret ? _secretCategoriesBox : _categoriesBox;
+    return box?.values.any((c) => c.name == 'MK') ?? false;
   }
 
-  Category? getMKCategory() {
-    if (_categoriesBox == null) return null;
+  Category? getMKCategory({required bool isSecret}) {
+    final box = isSecret ? _secretCategoriesBox : _categoriesBox;
+    if (box == null) return null;
     try {
-      return _categoriesBox!.values.firstWhere((c) => c.name == 'MK');
+      return box.values.firstWhere((c) => c.name == 'MK');
     } catch (e) {
       return null;
     }
@@ -58,13 +72,15 @@ class DatabaseService {
 
   // --- Category Methods ---
 
-  List<Category> getCategories() {
-    if (_categoriesBox == null) return [];
-    return _categoriesBox!.values.toList();
+  List<Category> getCategories({required bool isSecret}) {
+    final box = isSecret ? _secretCategoriesBox : _categoriesBox;
+    if (box == null) return [];
+    return box.values.toList();
   }
 
-  Future<void> addCategory(Category category) async {
-    await _categoriesBox?.add(category);
+  Future<void> addCategory(Category category, {required bool isSecret}) async {
+    final box = isSecret ? _secretCategoriesBox : _categoriesBox;
+    await box?.add(category);
   }
 
   Future<void> updateCategory(Category category) async {
@@ -75,23 +91,24 @@ class DatabaseService {
     await category.delete();
   }
 
-  double getTotalIncome() {
+  double getTotalIncome({required bool isSecret}) {
     double total = 0;
-    for (var cat in getCategories()) {
+    for (var cat in getCategories(isSecret: isSecret)) {
       total += cat.totalIncome;
     }
     return total;
   }
 
-  double getTotalExpense() {
+  double getTotalExpense({required bool isSecret}) {
     double total = 0;
-    for (var cat in getCategories()) {
+    for (var cat in getCategories(isSecret: isSecret)) {
       total += cat.totalExpenses;
     }
     return total;
   }
 
-  double getBalance() {
-    return getTotalIncome() - getTotalExpense();
+  double getBalance({required bool isSecret}) {
+    return getTotalIncome(isSecret: isSecret) -
+        getTotalExpense(isSecret: isSecret);
   }
 }

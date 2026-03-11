@@ -11,8 +11,13 @@ import 'password_dialog.dart';
 
 class CategoryScreen extends StatefulWidget {
   final Category category;
+  final bool isSecretMode;
 
-  const CategoryScreen({super.key, required this.category});
+  const CategoryScreen({
+    super.key,
+    required this.category,
+    required this.isSecretMode,
+  });
 
   @override
   State<CategoryScreen> createState() => _CategoryScreenState();
@@ -133,7 +138,10 @@ class _CategoryScreenState extends State<CategoryScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => AddIncomeScreen(category: widget.category),
+                  builder: (_) => AddIncomeScreen(
+                    category: widget.category,
+                    isSecretMode: widget.isSecretMode,
+                  ),
                 ),
               ).then((_) => setState(() {}));
             },
@@ -147,7 +155,10 @@ class _CategoryScreenState extends State<CategoryScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => AddExpenseScreen(category: widget.category),
+                  builder: (_) => AddExpenseScreen(
+                    category: widget.category,
+                    isSecretMode: widget.isSecretMode,
+                  ),
                 ),
               ).then((_) => setState(() {}));
             },

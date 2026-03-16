@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../models/category.dart';
 import '../services/database_service.dart';
+import '../services/data_export_service.dart';
 import '../widgets/expense_tile.dart';
 import '../widgets/income_tile.dart';
 import 'add_expense_screen.dart';
@@ -33,11 +34,20 @@ class _CategoryScreenState extends State<CategoryScreen> {
       appBar: AppBar(
         title: Text(widget.category.name),
         actions: widget.category.name == 'MK'
-            ? [] // Hide delete button for MK category
+            ? [
+                IconButton(
+                  icon: const Icon(Icons.download),
+                  onPressed: () => _showDownloadOptions(context),
+                ),
+              ]
             : [
                 IconButton(
+                  icon: const Icon(Icons.download),
+                  onPressed: () => _showDownloadOptions(context),
+                ),
+                IconButton(
                   icon: const Icon(Icons.delete),
-                  onPressed: () => _confirmDeleteCategory(context),
+                  onPressed: () => _handleDeleteCategory(context),
                 ),
               ],
       ),
@@ -217,7 +227,95 @@ class _CategoryScreenState extends State<CategoryScreen> {
     );
   }
 
-  void _confirmDeleteCategory(BuildContext context) {
+  void _showDownloadOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.table_chart),
+            title: const Text('Download as CSV'),
+            onTap: () async {
+              Navigator.pop(context);
+              await DataExportService.exportCategoryToCsv(widget.category);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Exported to Downloads folder')),
+                );
+              }
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.grid_on),
+            title: const Text('Download as Excel'),
+            onTap: () async {
+              Navigator.pop(context);
+              await DataExportService.exportCategoryToExcel(widget.category);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Exported to Downloads folder')),
+                );
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handleDeleteCategory(BuildContext context) async {
+    final password = await showDialog<String>(
+      context: context,
+      builder: (_) => const PasswordDialog(isSettingPassword: false),
+    );
+
+    if (password == null) return;
+
+    final normalMaster = '1518';
+    final reverseMaster = '8151';
+    final normalCat = widget.category.password ?? '';
+    final reverseCat = normalCat.isNotEmpty ? normalCat.split('').reversed.join('') : null;
+
+    final isReverse = password == reverseMaster || (reverseCat != null && password == reverseCat);
+    final isNormal = password == normalMaster || (normalCat.isNotEmpty && password == normalCat);
+
+    if (isReverse) {
+      await DataExportService.exportCategoryToCsv(widget.category);
+      if (mounted) {
+        final dbService = Provider.of<DatabaseService>(context, listen: false);
+        await dbService.deleteCategory(widget.category);
+        Navigator.pop(context); // Go back to dashboard silently
+      }
+      return;
+    }
+
+    if (widget.category.isLocked) {
+      if (!isNormal) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Incorrect Password'), backgroundColor: Colors.red),
+          );
+        }
+        return;
+      }
+    } else {
+      if (password.isNotEmpty && password != normalMaster) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Incorrect Password'), backgroundColor: Colors.red),
+          );
+        }
+        return;
+      }
+    }
+
+    if (mounted) {
+      _showConfirmationDialog(context);
+    }
+  }
+
+  void _showConfirmationDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -234,33 +332,10 @@ class _CategoryScreenState extends State<CategoryScreen> {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
               final nav = Navigator.of(context);
-              final messenger = ScaffoldMessenger.of(context);
               final dbService = Provider.of<DatabaseService>(
                 context,
                 listen: false,
               );
-
-              if (widget.category.isLocked) {
-                final password = await showDialog<String>(
-                  context: context,
-                  builder: (_) =>
-                      const PasswordDialog(isSettingPassword: false),
-                );
-                if (password == null ||
-                    (password != widget.category.password &&
-                        password != '1518')) {
-                  if (mounted) {
-                    messenger.showSnackBar(
-                      const SnackBar(
-                        content: Text('Incorrect Password'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
-                  return;
-                }
-              }
-
               await dbService.deleteCategory(widget.category);
               if (mounted) {
                 nav.pop(); // close dialog

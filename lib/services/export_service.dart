@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:csv/csv.dart';
 import 'package:intl/intl.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:path_provider/path_provider.dart';
 import '../models/category.dart';
 import '../models/expense.dart';
 import '../models/income.dart';
@@ -15,17 +15,12 @@ class ExportService {
     required bool exportIncomes,
   }) async {
     try {
-      // 1. Request permission
-      if (Platform.isAndroid) {
-        // Use manage external storage for Android 11+, storage for older
-        final storage = await Permission.manageExternalStorage.request();
-        if (!storage.isGranted) {
-            final access = await Permission.storage.request();
-            if (!access.isGranted) {
-               return 'Storage permission denied.';
-            }
-        }
-      }
+      // 1. Save file to temporary/documents directory
+      final directory = await getTemporaryDirectory();
+      
+      final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+      final safeCategoryName = category.name.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+      final file = File('${directory.path}/${safeCategoryName}_$timestamp.csv');
 
       // 2. Prepare CSV data
       List<List<dynamic>> rows = [];
@@ -69,23 +64,6 @@ class ExportService {
 
       // 3. Convert to CSV
       String csvData = const CsvEncoder().convert(rows);
-
-      // 4. Save file
-      Directory? directory;
-      if (Platform.isAndroid) {
-        directory = Directory('/storage/emulated/0/Download');
-      } else {
-        // Fallback for other platforms if needed, but the prompt says Android
-        return 'Not supported on this platform';
-      }
-
-      if (!await directory.exists()) {
-        await directory.create(recursive: true);
-      }
-
-      final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
-      final safeCategoryName = category.name.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
-      final file = File('${directory.path}/${safeCategoryName}_$timestamp.csv');
 
       await file.writeAsString(csvData);
 

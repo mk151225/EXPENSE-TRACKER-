@@ -6,6 +6,7 @@ import '../models/expense.dart';
 import '../models/income.dart';
 import '../services/database_service.dart';
 import '../services/export_service.dart';
+import 'package:share_plus/share_plus.dart';
 import '../widgets/expense_tile.dart';
 import '../widgets/income_tile.dart';
 import 'password_dialog.dart';
@@ -402,10 +403,18 @@ class _CategoryScreenState extends State<CategoryScreen> {
       exportIncomes: exportIncomes,
     );
 
-    if (mounted) {
+    if (mounted && result != null && result.startsWith('/')) {
+       // Share the file
+       await SharePlus.instance.share(
+         ShareParams(
+           files: [XFile(result)],
+           text: 'Exported data for ${widget.category.name}',
+         ),
+       );
+    } else if (mounted) {
        ScaffoldMessenger.of(context).showSnackBar(
          SnackBar(
-           content: Text(result != null && result.startsWith('/') ? 'Saved to: $result' : result ?? 'Download failed'),
+           content: Text(result ?? 'Download failed'),
            duration: const Duration(seconds: 4),
          ),
        );

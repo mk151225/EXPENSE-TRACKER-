@@ -5,6 +5,7 @@ import '../models/category.dart';
 import '../models/expense.dart';
 import '../models/income.dart';
 import '../services/database_service.dart';
+import '../services/export_service.dart';
 import '../widgets/expense_tile.dart';
 import '../widgets/income_tile.dart';
 import 'password_dialog.dart';
@@ -77,14 +78,17 @@ class _CategoryScreenState extends State<CategoryScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.category.name),
-        actions: widget.category.name == 'MK'
-            ? [] // Hide delete button for MK category
-            : [
-                IconButton(
-                  icon: const Icon(Icons.delete),
-                  onPressed: () => _confirmDeleteCategory(context),
-                ),
-              ],
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.download),
+            onPressed: _showExportDialog,
+          ),
+          if (widget.category.name != 'MK')
+            IconButton(
+              icon: const Icon(Icons.delete),
+              onPressed: () => _confirmDeleteCategory(context),
+            ),
+        ],
       ),
       body: Column(
         children: [
@@ -325,6 +329,86 @@ class _CategoryScreenState extends State<CategoryScreen> {
           _selectedFilter = 'All';
         });
       }
+    }
+  }
+
+  void _showExportDialog() {
+    bool exportIncomes = true;
+    bool exportExpenses = true;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Export Category Data'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Select data to export to CSV:'),
+                  CheckboxListTile(
+                    title: const Text('Incomes'),
+                    value: exportIncomes,
+                    onChanged: (val) {
+                      setState(() {
+                        exportIncomes = val ?? true;
+                      });
+                    },
+                  ),
+                  CheckboxListTile(
+                    title: const Text('Expenses'),
+                    value: exportExpenses,
+                    onChanged: (val) {
+                      setState(() {
+                        exportExpenses = val ?? true;
+                      });
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (!exportIncomes && !exportExpenses) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Please select at least one option to export.')),
+                      );
+                      return;
+                    }
+                    Navigator.pop(context); // Close dialog
+                    _exportData(exportIncomes, exportExpenses);
+                  },
+                  child: const Text('Download'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _exportData(bool exportIncomes, bool exportExpenses) async {
+    final result = await ExportService.exportCategoryToCSV(
+      category: widget.category,
+      expenses: _filteredExpenses,
+      incomes: _filteredIncomes,
+      exportExpenses: exportExpenses,
+      exportIncomes: exportIncomes,
+    );
+
+    if (mounted) {
+       ScaffoldMessenger.of(context).showSnackBar(
+         SnackBar(
+           content: Text(result != null && result.startsWith('/') ? 'Saved to: $result' : result ?? 'Download failed'),
+           duration: const Duration(seconds: 4),
+         ),
+       );
     }
   }
 

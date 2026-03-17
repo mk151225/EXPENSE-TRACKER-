@@ -7,9 +7,8 @@ import '../models/income.dart';
 import '../services/database_service.dart';
 import '../widgets/expense_tile.dart';
 import '../widgets/income_tile.dart';
-import 'add_expense_screen.dart';
-import 'add_income_screen.dart';
 import 'password_dialog.dart';
+import 'add_transaction_screen.dart';
 
 class CategoryScreen extends StatefulWidget {
   final Category category;
@@ -214,6 +213,18 @@ class _CategoryScreenState extends State<CategoryScreen> {
                                     expense: expense,
                                     onAuthenticate: _authenticateForDelete,
                                     onDelete: () => _deleteExpense(expense),
+                                    onEdit: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => AddTransactionScreen(
+                                            category: widget.category,
+                                            isSecretMode: widget.isSecretMode,
+                                            expenseToEdit: expense,
+                                          ),
+                                        ),
+                                      ).then((_) => setState(() {}));
+                                    },
                                   );
                                 },
                               ),
@@ -231,6 +242,18 @@ class _CategoryScreenState extends State<CategoryScreen> {
                                     income: income,
                                     onAuthenticate: _authenticateForDelete,
                                     onDelete: () => _deleteIncome(income),
+                                    onEdit: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => AddTransactionScreen(
+                                            category: widget.category,
+                                            isSecretMode: widget.isSecretMode,
+                                            incomeToEdit: income,
+                                          ),
+                                        ),
+                                      ).then((_) => setState(() {}));
+                                    },
                                   );
                                 },
                               ),
@@ -243,44 +266,20 @@ class _CategoryScreenState extends State<CategoryScreen> {
           ),
         ],
       ),
-      floatingActionButton: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          FloatingActionButton(
-            heroTag: "addIncome",
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => AddIncomeScreen(
-                    category: widget.category,
-                    isSecretMode: widget.isSecretMode,
-                  ),
-                ),
-              ).then((_) => setState(() {}));
-            },
-            backgroundColor: Colors.green,
-            child: const Icon(Icons.add, color: Colors.white),
-          ),
-          const SizedBox(height: 12),
-          FloatingActionButton.extended(
-            heroTag: "addExpense",
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => AddExpenseScreen(
-                    category: widget.category,
-                    isSecretMode: widget.isSecretMode,
-                  ),
-                ),
-              ).then((_) => setState(() {}));
-            },
-            backgroundColor: theme.colorScheme.primary,
-            icon: const Icon(Icons.add),
-            label: const Text('Add Expense'),
-          ),
-        ],
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => AddTransactionScreen(
+                category: widget.category,
+                isSecretMode: widget.isSecretMode,
+              ),
+            ),
+          ).then((_) => setState(() {}));
+        },
+        backgroundColor: theme.colorScheme.primary,
+        child: const Icon(Icons.add),
       ),
     );
   }

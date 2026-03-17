@@ -37,6 +37,7 @@ class IncomeTile extends StatelessWidget {
         onDelete();
       },
       child: ListTile(
+        onLongPress: onEdit,
         leading: CircleAvatar(
           backgroundColor: Colors.green.withValues(alpha: 0.2),
           child: const Icon(Icons.account_balance_wallet, color: Colors.green),
@@ -60,27 +61,13 @@ class IncomeTile extends StatelessWidget {
               ),
           ],
         ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '+ ${currencyFormat.format(income.amount)}',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: Colors.green,
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: () async {
-                final auth = await onAuthenticate();
-                if (auth) {
-                  onDelete();
-                }
-              },
-            ),
-          ],
+        trailing: Text(
+          '+ ${currencyFormat.format(income.amount)}',
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+            color: Colors.green,
+          ),
         ),
       ),
     );

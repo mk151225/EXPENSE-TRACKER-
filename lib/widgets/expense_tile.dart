@@ -37,6 +37,7 @@ class ExpenseTile extends StatelessWidget {
         onDelete();
       },
       child: ListTile(
+        onLongPress: onEdit,
         leading: CircleAvatar(
           backgroundColor: Theme.of(context).colorScheme.primaryContainer,
           child: Icon(
@@ -63,27 +64,13 @@ class ExpenseTile extends StatelessWidget {
               ),
           ],
         ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              currencyFormat.format(expense.amount),
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: Colors.redAccent,
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: () async {
-                final auth = await onAuthenticate();
-                if (auth) {
-                  onDelete();
-                }
-              },
-            ),
-          ],
+        trailing: Text(
+          currencyFormat.format(expense.amount),
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+            color: Colors.redAccent,
+          ),
         ),
       ),
     );

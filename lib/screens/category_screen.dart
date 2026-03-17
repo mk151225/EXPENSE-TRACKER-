@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../models/category.dart';
+import '../models/expense.dart';
+import '../models/income.dart';
 import '../services/database_service.dart';
 import '../widgets/expense_tile.dart';
 import '../widgets/income_tile.dart';
@@ -24,6 +26,50 @@ class CategoryScreen extends StatefulWidget {
 }
 
 class _CategoryScreenState extends State<CategoryScreen> {
+  String _selectedFilter = 'All';
+  DateTime? _startDate;
+  DateTime? _endDate;
+
+  bool _isDateInRange(DateTime date) {
+    if (_selectedFilter == 'All') return true;
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final itemDate = DateTime(date.year, date.month, date.day);
+
+    if (_selectedFilter == '1 Week') {
+      final weekAgo = today.subtract(const Duration(days: 7));
+      return itemDate.isAfter(weekAgo) || itemDate.isAtSameMomentAs(weekAgo);
+    } else if (_selectedFilter == '1 Month') {
+      final monthAgo = DateTime(today.year, today.month - 1, today.day);
+      return itemDate.isAfter(monthAgo) || itemDate.isAtSameMomentAs(monthAgo);
+    } else if (_selectedFilter == 'Custom Date Range') {
+      if (_startDate == null || _endDate == null) return true;
+      final start =
+          DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
+      final end = DateTime(_endDate!.year, _endDate!.month, _endDate!.day);
+      return (itemDate.isAfter(start) || itemDate.isAtSameMomentAs(start)) &&
+          (itemDate.isBefore(end) || itemDate.isAtSameMomentAs(end));
+    }
+    return true;
+  }
+
+  List<Expense> get _filteredExpenses {
+    final filtered = widget.category.expenses
+        .where((e) => _isDateInRange(e.date))
+        .toList();
+    filtered.sort((a, b) => b.date.compareTo(a.date));
+    return filtered;
+  }
+
+  List<Income> get _filteredIncomes {
+    final filtered = widget.category.incomes
+        .where((i) => _isDateInRange(i.date))
+        .toList();
+    filtered.sort((a, b) => b.date.compareTo(a.date));
+    return filtered;
+  }
+
   @override
   Widget build(BuildContext context) {
     final currencyFormat = NumberFormat.currency(symbol: '₹', decimalDigits: 2);
@@ -52,8 +98,10 @@ class _CategoryScreenState extends State<CategoryScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     _buildStatColumn(
-                      'Total w/o Expense',
-                      currencyFormat.format(widget.category.totalWithoutExpense),
+                      'Total Income',
+                      currencyFormat.format(
+                        widget.category.totalWithoutExpense,
+                      ),
                       Colors.blueAccent,
                     ),
                     _buildStatColumn(
@@ -95,6 +143,47 @@ class _CategoryScreenState extends State<CategoryScreen> {
               ],
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Filter by Date:',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                DropdownButton<String>(
+                  value: _selectedFilter,
+                  items: ['All', '1 Week', '1 Month', 'Custom Date Range']
+                      .map((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
+                  onChanged: (String? newValue) {
+                    if (newValue == 'Custom Date Range') {
+                      _selectCustomDateRange();
+                    } else if (newValue != null) {
+                      setState(() {
+                        _selectedFilter = newValue;
+                        _startDate = null;
+                        _endDate = null;
+                      });
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+          if (_selectedFilter == 'Custom Date Range' &&
+              _startDate != null &&
+              _endDate != null)
+            Padding(
+              padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 8.0),
+              child: Text(
+                'Selected Range: ${DateFormat('MMM d, yyyy').format(_startDate!)} - ${DateFormat('MMM d, yyyy').format(_endDate!)}',
+                style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.grey),
+              ),
+            ),
           Expanded(
             child: DefaultTabController(
               length: 2,
@@ -112,37 +201,36 @@ class _CategoryScreenState extends State<CategoryScreen> {
                     child: TabBarView(
                       children: [
                         // Expenses Tab
-                        widget.category.expenses.isEmpty
+                        _filteredExpenses.isEmpty
                             ? const Center(
-                                child: Text('No expenses yet. Add one!'),
+                                child: Text('No expenses found.'),
                               )
                             : ListView.builder(
                                 padding: const EdgeInsets.all(8),
-                                itemCount: widget.category.expenses.length,
+                                itemCount: _filteredExpenses.length,
                                 itemBuilder: (context, index) {
-                                  final expense =
-                                      widget.category.expenses[index];
+                                  final expense = _filteredExpenses[index];
                                   return ExpenseTile(
                                     expense: expense,
                                     onAuthenticate: _authenticateForDelete,
-                                    onDelete: () => _deleteExpense(index),
+                                    onDelete: () => _deleteExpense(expense),
                                   );
                                 },
                               ),
                         // Incomes Tab
-                        widget.category.incomes.isEmpty
+                        _filteredIncomes.isEmpty
                             ? const Center(
-                                child: Text('No incomes yet. Add one!'),
+                                child: Text('No incomes found.'),
                               )
                             : ListView.builder(
                                 padding: const EdgeInsets.all(8),
-                                itemCount: widget.category.incomes.length,
+                                itemCount: _filteredIncomes.length,
                                 itemBuilder: (context, index) {
-                                  final income = widget.category.incomes[index];
+                                  final income = _filteredIncomes[index];
                                   return IncomeTile(
                                     income: income,
                                     onAuthenticate: _authenticateForDelete,
-                                    onDelete: () => _deleteIncome(index),
+                                    onDelete: () => _deleteIncome(income),
                                   );
                                 },
                               ),
@@ -215,6 +303,30 @@ class _CategoryScreenState extends State<CategoryScreen> {
         ),
       ],
     );
+  }
+
+  Future<void> _selectCustomDateRange() async {
+    final DateTimeRange? picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+      initialDateRange: _startDate != null && _endDate != null
+          ? DateTimeRange(start: _startDate!, end: _endDate!)
+          : null,
+    );
+    if (picked != null) {
+      setState(() {
+        _selectedFilter = 'Custom Date Range';
+        _startDate = picked.start;
+        _endDate = picked.end;
+      });
+    } else {
+      if (_startDate == null || _endDate == null) {
+        setState(() {
+          _selectedFilter = 'All';
+        });
+      }
+    }
   }
 
   void _confirmDeleteCategory(BuildContext context) {
@@ -297,16 +409,16 @@ class _CategoryScreenState extends State<CategoryScreen> {
     return true;
   }
 
-  Future<void> _deleteExpense(int index) async {
-    widget.category.expenses.removeAt(index);
+  Future<void> _deleteExpense(Expense expense) async {
+    widget.category.expenses.remove(expense);
     await widget.category.save();
     if (mounted) {
       setState(() {});
     }
   }
 
-  Future<void> _deleteIncome(int index) async {
-    widget.category.incomes.removeAt(index);
+  Future<void> _deleteIncome(Income income) async {
+    widget.category.incomes.remove(income);
     await widget.category.save();
     if (mounted) {
       setState(() {});

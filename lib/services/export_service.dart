@@ -24,7 +24,7 @@ class ExportService {
 
       // 2. Prepare CSV data
       List<List<dynamic>> rows = [];
-      final dateFormat = DateFormat('yyyy-MM-dd HH:mm:ss');
+      final dateFormat = DateFormat('yyyy-MM-dd');
 
       // headers
       rows.add([

@@ -3,7 +3,10 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../models/category.dart';
 import '../services/database_service.dart';
+import '../services/import_service.dart';
 import '../widgets/category_card.dart';
+import '../models/expense.dart';
+import '../models/income.dart';
 import 'category_screen.dart';
 import 'password_dialog.dart';
 import 'dart:io';
@@ -149,6 +152,13 @@ class _DashboardState extends State<Dashboard> {
       appBar: AppBar(
         title: Text(widget.isSecretMode ? 'MK Personal Wallet' : 'Dashboard'),
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.file_upload),
+            onPressed: _importCategory,
+            tooltip: 'Import Category from CSV',
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -324,6 +334,139 @@ class _DashboardState extends State<Dashboard> {
         icon: const Icon(Icons.add),
         label: const Text('Add Category'),
       ),
+    );
+  }
+
+  Future<void> _importCategory() async {
+    final result = await ImportService.pickAndParseCSV();
+
+    if (result == null) return;
+
+    if (result.containsKey('error')) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['error']),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    final List<Income> incomes = result['incomes'];
+    final List<Expense> expenses = result['expenses'];
+
+    if (mounted) {
+      _showImportDialog(incomes, expenses);
+    }
+  }
+
+  void _showImportDialog(List<Income> incomes, List<Expense> expenses) {
+    final nameController = TextEditingController();
+    bool isLocked = false;
+    String? categoryPassword;
+    bool enablePaymentModes = true;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Import Category'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Found ${incomes.length} incomes and ${expenses.length} expenses.',
+                    style: const TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'New Category Name',
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Checkbox(
+                        value: isLocked,
+                        onChanged: (val) async {
+                          if (val == true) {
+                            final password = await showDialog<String>(
+                              context: context,
+                              builder: (_) =>
+                                  const PasswordDialog(isSettingPassword: true),
+                            );
+                            if (password != null && password.isNotEmpty) {
+                              setDialogState(() {
+                                isLocked = true;
+                                categoryPassword = password;
+                              });
+                            }
+                          } else {
+                            setDialogState(() {
+                              isLocked = false;
+                              categoryPassword = null;
+                            });
+                          }
+                        },
+                      ),
+                      const Text('Enable Category Lock'),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      Checkbox(
+                        value: enablePaymentModes,
+                        onChanged: (val) {
+                          setDialogState(() {
+                            enablePaymentModes = val ?? true;
+                          });
+                        },
+                      ),
+                      const Text('Enable Payment Modes'),
+                    ],
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (nameController.text.isNotEmpty) {
+                      final category = Category(
+                        name: nameController.text,
+                        incomes: incomes,
+                        expenses: expenses,
+                        isLocked: isLocked,
+                        password: categoryPassword,
+                        enablePaymentModes: enablePaymentModes,
+                      );
+                      final nav = Navigator.of(context);
+                      await Provider.of<DatabaseService>(
+                        context,
+                        listen: false,
+                      ).addCategory(category, isSecret: widget.isSecretMode);
+                      if (mounted) {
+                        nav.pop();
+                        setState(() {});
+                      }
+                    }
+                  },
+                  child: const Text('Create'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 

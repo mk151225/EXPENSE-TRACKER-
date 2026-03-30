@@ -24,6 +24,9 @@ class Category extends HiveObject {
   @HiveField(5)
   bool enablePaymentModes;
 
+  @HiveField(6)
+  bool isCore;
+
   Category({
     required this.name,
     required this.incomes,
@@ -31,6 +34,7 @@ class Category extends HiveObject {
     this.isLocked = false,
     this.password,
     this.enablePaymentModes = true,
+    this.isCore = false,
   });
 
   double get totalIncome {

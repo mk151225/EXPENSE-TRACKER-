@@ -64,7 +64,7 @@ class _LockScreenState extends State<LockScreen> {
         );
       }
     } else {
-      if (_pin == '9786') {
+      if (await db.verifySecretPin(_pin)) {
         if (mounted) {
           SessionManager.instance.startSession();
           Navigator.of(context).pushReplacement(

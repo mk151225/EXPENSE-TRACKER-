@@ -2,8 +2,17 @@ import 'package:flutter/material.dart';
 
 class PasswordDialog extends StatefulWidget {
   final bool isSettingPassword;
+  final String? title;
+  final String? hintText;
+  final void Function(String)? onPasswordSet;
 
-  const PasswordDialog({super.key, required this.isSettingPassword});
+  const PasswordDialog({
+    super.key,
+    required this.isSettingPassword,
+    this.title,
+    this.hintText,
+    this.onPasswordSet,
+  });
 
   @override
   State<PasswordDialog> createState() => _PasswordDialogState();
@@ -23,15 +32,16 @@ class _PasswordDialogState extends State<PasswordDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(
-        widget.isSettingPassword
-            ? 'Set Category Password'
-            : 'Enter Password to Unlock Category',
+        widget.title ??
+            (widget.isSettingPassword
+                ? 'Set Category Password'
+                : 'Enter Password to Unlock Category'),
       ),
       content: TextField(
         controller: _passwordController,
         obscureText: _obscureText,
         decoration: InputDecoration(
-          labelText: 'Password',
+          labelText: widget.hintText ?? 'Password',
           suffixIcon: IconButton(
             icon: Icon(_obscureText ? Icons.visibility : Icons.visibility_off),
             onPressed: () {
@@ -49,13 +59,18 @@ class _PasswordDialogState extends State<PasswordDialog> {
         ),
         ElevatedButton(
           onPressed: () {
-            if (_passwordController.text.isNotEmpty) {
-              Navigator.pop(context, _passwordController.text);
+            final pass = _passwordController.text;
+            if (pass.isNotEmpty) {
+              if (widget.onPasswordSet != null) {
+                widget.onPasswordSet!(pass);
+              }
+              Navigator.pop(context, pass);
             }
           },
-          child: Text(widget.isSettingPassword ? 'Set Password' : 'Unlock'),
+          child: Text(widget.isSettingPassword ? 'Set' : 'Unlock'),
         ),
       ],
     );
   }
 }
+

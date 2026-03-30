@@ -110,7 +110,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
             icon: const Icon(Icons.download),
             onPressed: () => _showDownloadOptions(context),
           ),
-          if (widget.category.name != 'MK')
+          if (!widget.category.isCore)
             IconButton(
               icon: const Icon(Icons.delete),
               onPressed: () => _handleDeleteCategory(context),

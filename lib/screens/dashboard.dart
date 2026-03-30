@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'dart:async';
 import '../models/category.dart';
 import '../services/database_service.dart';
 import '../services/import_service.dart';
@@ -9,6 +10,7 @@ import '../models/expense.dart';
 import '../models/income.dart';
 import 'category_screen.dart';
 import 'password_dialog.dart';
+import 'master_control_screen.dart';
 import 'dart:io';
 
 class Dashboard extends StatefulWidget {
@@ -21,6 +23,44 @@ class Dashboard extends StatefulWidget {
 }
 
 class _DashboardState extends State<Dashboard> {
+  Timer? _pressTimer;
+
+  @override
+  void dispose() {
+    _pressTimer?.cancel();
+    super.dispose();
+  }
+
+  void _onLongPressThreeSeconds() async {
+    final db = Provider.of<DatabaseService>(context, listen: false);
+    final password = await showDialog<String>(
+      context: context,
+      builder: (_) => const PasswordDialog(isSettingPassword: false),
+    );
+
+    if (password != null) {
+      if (await db.verifyMasterPin(password)) {
+        if (mounted) {
+          Navigator.of(context)
+              .push(
+                MaterialPageRoute(builder: (_) => const MasterControlScreen()),
+              )
+              .then((_) {
+            if (mounted) setState(() {});
+          });
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Incorrect Master PIN'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
   void _showAddCategoryDialog() {
     final nameController = TextEditingController();
     bool isLocked = false;
@@ -131,26 +171,36 @@ class _DashboardState extends State<Dashboard> {
     final currencyFormat = NumberFormat.currency(symbol: '₹', decimalDigits: 2);
     final theme = Theme.of(context);
 
-    // Only fetch MK category if we are in secret mode or if it exists
-    final mkCategory = db.getMKCategory(isSecret: widget.isSecretMode);
-    double totalIncome = mkCategory != null
-        ? mkCategory.totalIncome
+    // Only fetch Core category if we are in secret mode or if it exists
+    final coreCategory = db.getCoreCategory(isSecret: widget.isSecretMode);
+    double totalIncome = coreCategory != null
+        ? coreCategory.totalIncome
         : db.getTotalIncome(isSecret: widget.isSecretMode);
-    double totalExpense = mkCategory != null
-        ? mkCategory.totalExpenses
+    double totalExpense = coreCategory != null
+        ? coreCategory.totalExpenses
         : db.getTotalExpense(isSecret: widget.isSecretMode);
-    double balance = mkCategory != null
-        ? mkCategory.remainingBalance
+    double balance = coreCategory != null
+        ? coreCategory.remainingBalance
         : db.getBalance(isSecret: widget.isSecretMode);
 
     final otherCategories = db
         .getCategories(isSecret: widget.isSecretMode)
-        .where((c) => c.name != 'MK')
+        .where((c) => !c.isCore)
         .toList();
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.isSecretMode ? 'MK Personal Wallet' : 'Dashboard'),
+        title: GestureDetector(
+          onLongPressStart: (_) {
+            _pressTimer = Timer(const Duration(seconds: 3), () {
+              _onLongPressThreeSeconds();
+            });
+          },
+          onLongPressEnd: (_) {
+            _pressTimer?.cancel();
+          },
+          child: Text(widget.isSecretMode ? 'MK Personal Wallet' : 'Dashboard'),
+        ),
         elevation: 0,
         actions: [
           IconButton(
@@ -162,21 +212,23 @@ class _DashboardState extends State<Dashboard> {
       ),
       body: Column(
         children: [
-          if (mkCategory != null)
+          if (coreCategory != null)
             GestureDetector(
-              onTap: () {
-                Navigator.of(context)
-                    .push(
-                      MaterialPageRoute(
-                        builder: (_) => CategoryScreen(
-                          category: mkCategory,
-                          isSecretMode: widget.isSecretMode,
+                      onTap: () {
+                if (coreCategory != null) {
+                  Navigator.of(context)
+                      .push(
+                        MaterialPageRoute(
+                          builder: (_) => CategoryScreen(
+                            category: coreCategory,
+                            isSecretMode: widget.isSecretMode,
+                          ),
                         ),
-                      ),
-                    )
-                    .then((_) {
-                      if (mounted) setState(() {});
-                    });
+                      )
+                      .then((_) {
+                        if (mounted) setState(() {});
+                      });
+                }
               },
               child: Container(
                 padding: const EdgeInsets.all(20),
@@ -189,8 +241,8 @@ class _DashboardState extends State<Dashboard> {
                 ),
                 child: Column(
                   children: [
-                    const Text(
-                      'MK',
+                    Text(
+                      coreCategory?.name ?? (widget.isSecretMode ? 'Secret Wallet' : 'Personal Wallet'),
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 24,

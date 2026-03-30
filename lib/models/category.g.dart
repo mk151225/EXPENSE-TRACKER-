@@ -22,14 +22,15 @@ class CategoryAdapter extends TypeAdapter<Category> {
       expenses: (fields[2] as List).cast<Expense>(),
       isLocked: fields[3] as bool,
       password: fields[4] as String?,
-      enablePaymentModes: fields[5] as bool,
+      enablePaymentModes: (fields[5] ?? true) as bool,
+      isCore: (fields[6] ?? false) as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, Category obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
@@ -41,7 +42,9 @@ class CategoryAdapter extends TypeAdapter<Category> {
       ..writeByte(4)
       ..write(obj.password)
       ..writeByte(5)
-      ..write(obj.enablePaymentModes);
+      ..write(obj.enablePaymentModes)
+      ..writeByte(6)
+      ..write(obj.isCore);
   }
 
   @override

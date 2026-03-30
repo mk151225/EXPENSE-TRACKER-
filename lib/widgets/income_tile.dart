@@ -7,6 +7,7 @@ class IncomeTile extends StatelessWidget {
   final VoidCallback onDelete;
   final Future<bool> Function() onAuthenticate;
   final VoidCallback? onEdit;
+  final bool showPaymentMode;
 
   const IncomeTile({
     super.key,
@@ -14,6 +15,7 @@ class IncomeTile extends StatelessWidget {
     required this.onDelete,
     required this.onAuthenticate,
     this.onEdit,
+    this.showPaymentMode = true,
   });
 
   @override
@@ -50,10 +52,11 @@ class IncomeTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(dateFormat.format(income.date)),
-            Text(
-              'Mode: ${income.paymentMode}',
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-            ),
+            if (showPaymentMode)
+              Text(
+                'Mode: ${income.paymentMode}',
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+              ),
             if (income.description.isNotEmpty)
               Text(
                 income.description,

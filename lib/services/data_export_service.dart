@@ -5,6 +5,9 @@ import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../models/category.dart';
+import '../models/income.dart';
+import '../models/expense.dart';
+
 
 class DataExportService {
   static Future<bool> _requestStoragePermission() async {
@@ -27,7 +30,11 @@ class DataExportService {
     }
   }
 
-  static Future<void> exportCategoryToCsv(Category category) async {
+  static Future<void> exportCategoryToCsv(
+    Category category, {
+    List<Income>? incomes,
+    List<Expense>? expenses,
+  }) async {
     final hasPermission = await _requestStoragePermission();
     if (!hasPermission) return;
 
@@ -43,7 +50,10 @@ class DataExportService {
 
     final dateFormat = DateFormat('dd-MM-yyyy');
 
-    for (var income in category.incomes) {
+    final incomesToExport = incomes ?? category.incomes;
+    final expensesToExport = expenses ?? category.expenses;
+
+    for (var income in incomesToExport) {
       rows.add([
         'Income',
         income.title,
@@ -54,7 +64,7 @@ class DataExportService {
       ]);
     }
 
-    for (var expense in category.expenses) {
+    for (var expense in expensesToExport) {
       rows.add([
         'Expense',
         expense.title,
@@ -70,7 +80,11 @@ class DataExportService {
     await file.writeAsString(csv);
   }
 
-  static Future<void> exportCategoryToExcel(Category category) async {
+  static Future<void> exportCategoryToExcel(
+    Category category, {
+    List<Income>? incomes,
+    List<Expense>? expenses,
+  }) async {
     final hasPermission = await _requestStoragePermission();
     if (!hasPermission) return;
 
@@ -89,7 +103,10 @@ class DataExportService {
 
     final dateFormat = DateFormat('dd-MM-yyyy');
 
-    for (var income in category.incomes) {
+    final incomesToExport = incomes ?? category.incomes;
+    final expensesToExport = expenses ?? category.expenses;
+
+    for (var income in incomesToExport) {
       sheetObject.appendRow([
         TextCellValue('Income'),
         TextCellValue(income.title),
@@ -100,7 +117,7 @@ class DataExportService {
       ]);
     }
 
-    for (var expense in category.expenses) {
+    for (var expense in expensesToExport) {
       sheetObject.appendRow([
         TextCellValue('Expense'),
         TextCellValue(expense.title),
@@ -119,3 +136,4 @@ class DataExportService {
     }
   }
 }
+

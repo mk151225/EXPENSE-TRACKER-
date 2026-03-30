@@ -7,6 +7,7 @@ class ExpenseTile extends StatelessWidget {
   final VoidCallback onDelete;
   final Future<bool> Function() onAuthenticate;
   final VoidCallback? onEdit;
+  final bool showPaymentMode;
 
   const ExpenseTile({
     super.key,
@@ -14,6 +15,7 @@ class ExpenseTile extends StatelessWidget {
     required this.onDelete,
     required this.onAuthenticate,
     this.onEdit,
+    this.showPaymentMode = true,
   });
 
   @override
@@ -53,10 +55,11 @@ class ExpenseTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(dateFormat.format(expense.date)),
-            Text(
-              'Mode: ${expense.paymentMode}',
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-            ),
+            if (showPaymentMode)
+              Text(
+                'Mode: ${expense.paymentMode}',
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+              ),
             if (expense.description.isNotEmpty)
               Text(
                 expense.description,

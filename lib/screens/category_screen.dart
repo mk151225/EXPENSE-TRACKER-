@@ -77,6 +77,31 @@ class _CategoryScreenState extends State<CategoryScreen> {
     final currencyFormat = NumberFormat.currency(symbol: '₹', decimalDigits: 2);
     final theme = Theme.of(context);
 
+    // Calculate totals from filtered data
+    final filteredExpensesList = _filteredExpenses;
+    final filteredIncomesList = _filteredIncomes;
+
+    final totalIncome = filteredIncomesList.fold(0.0, (sum, item) => sum + item.amount);
+    final totalExpense = filteredExpensesList.fold(0.0, (sum, item) => sum + item.amount);
+    final remainingBalance = totalIncome - totalExpense;
+
+    final cashIncome = filteredIncomesList
+        .where((i) => i.paymentMode == 'Cash')
+        .fold(0.0, (sum, item) => sum + item.amount);
+    final gpayIncome = filteredIncomesList
+        .where((i) => i.paymentMode == 'GPay')
+        .fold(0.0, (sum, item) => sum + item.amount);
+
+    final cashExpense = filteredExpensesList
+        .where((e) => e.paymentMode == 'Cash')
+        .fold(0.0, (sum, item) => sum + item.amount);
+    final gpayExpense = filteredExpensesList
+        .where((e) => e.paymentMode == 'GPay')
+        .fold(0.0, (sum, item) => sum + item.amount);
+
+    final cashBalance = cashIncome - cashExpense;
+    final gpayBalance = gpayIncome - gpayExpense;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.category.name),
@@ -104,47 +129,47 @@ class _CategoryScreenState extends State<CategoryScreen> {
                   children: [
                     _buildStatColumn(
                       'Total Income',
-                      currencyFormat.format(
-                        widget.category.totalWithoutExpense,
-                      ),
+                      currencyFormat.format(totalIncome),
                       Colors.blueAccent,
                     ),
                     _buildStatColumn(
                       'Total Balance',
-                      currencyFormat.format(widget.category.remainingBalance),
-                      widget.category.remainingBalance >= 0
+                      currencyFormat.format(remainingBalance),
+                      remainingBalance >= 0
                           ? Colors.greenAccent
                           : Colors.redAccent,
                     ),
                     _buildStatColumn(
                       'Total Expense',
-                      currencyFormat.format(widget.category.totalExpenses),
+                      currencyFormat.format(totalExpense),
                       Colors.orangeAccent,
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                const Divider(color: Colors.white24, height: 1),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildStatColumn(
-                      'GPay Balance',
-                      currencyFormat.format(widget.category.gpayBalance),
-                      widget.category.gpayBalance >= 0
-                          ? Colors.cyanAccent
-                          : Colors.redAccent,
-                    ),
-                    _buildStatColumn(
-                      'Cash Balance',
-                      currencyFormat.format(widget.category.cashBalance),
-                      widget.category.cashBalance >= 0
-                          ? Colors.amberAccent
-                          : Colors.redAccent,
-                    ),
-                  ],
-                ),
+                if (widget.category.enablePaymentModes) ...[
+                  const SizedBox(height: 16),
+                  const Divider(color: Colors.white24, height: 1),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildStatColumn(
+                        'GPay Balance',
+                        currencyFormat.format(gpayBalance),
+                        gpayBalance >= 0
+                            ? Colors.cyanAccent
+                            : Colors.redAccent,
+                      ),
+                      _buildStatColumn(
+                        'Cash Balance',
+                        currencyFormat.format(cashBalance),
+                        cashBalance >= 0
+                            ? Colors.amberAccent
+                            : Colors.redAccent,
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -217,6 +242,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                                   final expense = _filteredExpenses[index];
                                   return ExpenseTile(
                                     expense: expense,
+                                    showPaymentMode: widget.category.enablePaymentModes,
                                     onAuthenticate: _authenticateForDelete,
                                     onDelete: () => _deleteExpense(expense),
                                     onEdit: () {
@@ -246,6 +272,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                                   final income = _filteredIncomes[index];
                                   return IncomeTile(
                                     income: income,
+                                    showPaymentMode: widget.category.enablePaymentModes,
                                     onAuthenticate: _authenticateForDelete,
                                     onDelete: () => _deleteIncome(income),
                                     onEdit: () {
@@ -353,7 +380,11 @@ class _CategoryScreenState extends State<CategoryScreen> {
             title: const Text('Download CSV to Downloads'),
             onTap: () async {
               Navigator.pop(context);
-              await DataExportService.exportCategoryToCsv(widget.category);
+              await DataExportService.exportCategoryToCsv(
+                widget.category,
+                expenses: _filteredExpenses,
+                incomes: _filteredIncomes,
+              );
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Exported to Downloads folder')),
@@ -366,7 +397,11 @@ class _CategoryScreenState extends State<CategoryScreen> {
             title: const Text('Download Excel to Downloads'),
             onTap: () async {
               Navigator.pop(context);
-              await DataExportService.exportCategoryToExcel(widget.category);
+              await DataExportService.exportCategoryToExcel(
+                widget.category,
+                expenses: _filteredExpenses,
+                incomes: _filteredIncomes,
+              );
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Exported to Downloads folder')),

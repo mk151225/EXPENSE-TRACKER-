@@ -1,6 +1,7 @@
 // ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:math_expressions/math_expressions.dart';
 import '../models/category.dart';
 import '../models/expense.dart';
 import '../models/income.dart';
@@ -41,7 +42,13 @@ class _AddTransactionScreenState extends State<AddTransactionScreen>
     // 0 for Expense, 1 for Income
     int initialIndex = widget.incomeToEdit != null ? 1 : 0;
     _tabController = TabController(
-        length: 2, vsync: this, initialIndex: initialIndex);
+      length: 2,
+      vsync: this,
+      initialIndex: initialIndex,
+    );
+    _tabController.addListener(() {
+      setState(() {});
+    });
 
     if (_isEditing) {
       if (widget.expenseToEdit != null) {
@@ -97,7 +104,19 @@ class _AddTransactionScreenState extends State<AddTransactionScreen>
       return;
     }
 
-    final amount = double.tryParse(amountText);
+    double? amount;
+    try {
+      // Evaluate math expressions like 100+200
+      Parser p = Parser();
+      Expression exp = p.parse(
+        amountText.replaceAll('x', '*'),
+      ); // replace x with * for user convenience
+      ContextModel cm = ContextModel();
+      amount = exp.evaluate(EvaluationType.REAL, cm);
+    } catch (e) {
+      amount = double.tryParse(amountText);
+    }
+
     if (amount == null || amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a valid amount')),
@@ -108,18 +127,44 @@ class _AddTransactionScreenState extends State<AddTransactionScreen>
     final isExpense = _tabController.index == 0;
 
     if (_isEditing) {
-      if (widget.expenseToEdit != null) {
-        widget.expenseToEdit!.title = title;
-        widget.expenseToEdit!.amount = amount;
-        widget.expenseToEdit!.date = _selectedDate;
-        widget.expenseToEdit!.description = description;
-        widget.expenseToEdit!.paymentMode = _selectedPaymentMode;
-      } else if (widget.incomeToEdit != null) {
-        widget.incomeToEdit!.title = title;
-        widget.incomeToEdit!.amount = amount;
-        widget.incomeToEdit!.date = _selectedDate;
-        widget.incomeToEdit!.description = description;
-        widget.incomeToEdit!.paymentMode = _selectedPaymentMode;
+      final wasExpense = widget.expenseToEdit != null;
+
+      if (isExpense == wasExpense) {
+        if (wasExpense) {
+          widget.expenseToEdit!.title = title;
+          widget.expenseToEdit!.amount = amount;
+          widget.expenseToEdit!.date = _selectedDate;
+          widget.expenseToEdit!.description = description;
+          widget.expenseToEdit!.paymentMode = _selectedPaymentMode;
+        } else {
+          widget.incomeToEdit!.title = title;
+          widget.incomeToEdit!.amount = amount;
+          widget.incomeToEdit!.date = _selectedDate;
+          widget.incomeToEdit!.description = description;
+          widget.incomeToEdit!.paymentMode = _selectedPaymentMode;
+        }
+      } else {
+        if (wasExpense) {
+          widget.category.expenses.remove(widget.expenseToEdit);
+          final newIncome = Income(
+            title: title,
+            amount: amount,
+            date: _selectedDate,
+            description: description,
+            paymentMode: _selectedPaymentMode,
+          );
+          widget.category.incomes.add(newIncome);
+        } else {
+          widget.category.incomes.remove(widget.incomeToEdit);
+          final newExpense = Expense(
+            title: title,
+            amount: amount,
+            date: _selectedDate,
+            description: description,
+            paymentMode: _selectedPaymentMode,
+          );
+          widget.category.expenses.add(newExpense);
+        }
       }
       await widget.category.save();
     } else {
@@ -155,15 +200,13 @@ class _AddTransactionScreenState extends State<AddTransactionScreen>
     return Scaffold(
       appBar: AppBar(
         title: Text(_isEditing ? 'Edit Transaction' : 'Add Transaction'),
-        bottom: _isEditing
-            ? null // Prevent changing type while editing
-            : TabBar(
-                controller: _tabController,
-                tabs: const [
-                  Tab(text: 'Expense'),
-                  Tab(text: 'Income'),
-                ],
-              ),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'Expense'),
+            Tab(text: 'Income'),
+          ],
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -179,9 +222,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen>
               TextField(
                 controller: _amountController,
                 decoration: const InputDecoration(labelText: 'Amount'),
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
+                keyboardType: TextInputType.text,
               ),
               const SizedBox(height: 16),
               TextField(
@@ -190,39 +231,41 @@ class _AddTransactionScreenState extends State<AddTransactionScreen>
                   labelText: 'Description (Optional)',
                 ),
               ),
-              const SizedBox(height: 16),
-              const Text(
-                'Payment Mode',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              Row(
-                children: [
-                  Expanded(
-                    child: RadioListTile<String>(
-                      title: const Text('GPay'),
-                      value: 'GPay',
-                      groupValue: _selectedPaymentMode,
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedPaymentMode = value!;
-                        });
-                      },
+              if (widget.category.enablePaymentModes) ...[
+                const SizedBox(height: 16),
+                const Text(
+                  'Payment Mode',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: RadioListTile<String>(
+                        title: const Text('GPay'),
+                        value: 'GPay',
+                        groupValue: _selectedPaymentMode,
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedPaymentMode = value!;
+                          });
+                        },
+                      ),
                     ),
-                  ),
-                  Expanded(
-                    child: RadioListTile<String>(
-                      title: const Text('Cash'),
-                      value: 'Cash',
-                      groupValue: _selectedPaymentMode,
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedPaymentMode = value!;
-                        });
-                      },
+                    Expanded(
+                      child: RadioListTile<String>(
+                        title: const Text('Cash'),
+                        value: 'Cash',
+                        groupValue: _selectedPaymentMode,
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedPaymentMode = value!;
+                          });
+                        },
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 24),
               Row(
                 children: [
@@ -242,9 +285,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen>
                 onPressed: _saveTransaction,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: _isEditing
-                      ? Colors.blue
-                      : (_tabController.index == 0 ? Colors.red : Colors.green),
+                  backgroundColor: _tabController.index == 0
+                      ? Colors.red
+                      : Colors.green,
                 ),
                 child: Text(
                   _isEditing ? 'Save Changes' : 'Save Transaction',

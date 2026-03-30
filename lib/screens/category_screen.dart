@@ -501,6 +501,11 @@ class _CategoryScreenState extends State<CategoryScreen> {
   }
 
   void _handleDeleteCategory(BuildContext context) async {
+    if (!widget.category.isLocked) {
+      _showConfirmationDialog(context);
+      return;
+    }
+
     final password = await showDialog<String>(
       context: context,
       builder: (_) => const PasswordDialog(isSettingPassword: false),
@@ -587,7 +592,27 @@ class _CategoryScreenState extends State<CategoryScreen> {
 
   Future<bool> _authenticateForDelete() async {
     final messenger = ScaffoldMessenger.of(context);
-    if (!widget.category.isLocked) return true;
+    
+    if (!widget.category.isLocked) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Confirm Deletion'),
+          content: const Text('Are you sure you want to delete this entry?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        ),
+      );
+      return confirmed ?? false;
+    }
 
     final password = await showDialog<String>(
       context: context,
@@ -609,18 +634,48 @@ class _CategoryScreenState extends State<CategoryScreen> {
   }
 
   Future<void> _deleteExpense(Expense expense) async {
+    final index = widget.category.expenses.indexOf(expense);
     widget.category.expenses.remove(expense);
     await widget.category.save();
     if (mounted) {
       setState(() {});
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Expense deleted'),
+          action: SnackBarAction(
+            label: 'Undo',
+            onPressed: () async {
+              widget.category.expenses.insert(index, expense);
+              await widget.category.save();
+              if (mounted) setState(() {});
+            },
+          ),
+        ),
+      );
     }
   }
 
   Future<void> _deleteIncome(Income income) async {
+    final index = widget.category.incomes.indexOf(income);
     widget.category.incomes.remove(income);
     await widget.category.save();
     if (mounted) {
       setState(() {});
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Income deleted'),
+          action: SnackBarAction(
+            label: 'Undo',
+            onPressed: () async {
+              widget.category.incomes.insert(index, income);
+              await widget.category.save();
+              if (mounted) setState(() {});
+            },
+          ),
+        ),
+      );
     }
   }
 }

@@ -24,13 +24,14 @@ class CategoryAdapter extends TypeAdapter<Category> {
       password: fields[4] as String?,
       enablePaymentModes: (fields[5] ?? true) as bool,
       isCore: (fields[6] ?? false) as bool,
+      orderIndex: (fields[7] ?? 0) as int,
     );
   }
 
   @override
   void write(BinaryWriter writer, Category obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
@@ -44,7 +45,9 @@ class CategoryAdapter extends TypeAdapter<Category> {
       ..writeByte(5)
       ..write(obj.enablePaymentModes)
       ..writeByte(6)
-      ..write(obj.isCore);
+      ..write(obj.isCore)
+      ..writeByte(7)
+      ..write(obj.orderIndex);
   }
 
   @override

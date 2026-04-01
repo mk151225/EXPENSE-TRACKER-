@@ -186,7 +186,8 @@ class _DashboardState extends State<Dashboard> {
     final otherCategories = db
         .getCategories(isSecret: widget.isSecretMode)
         .where((c) => !c.isCore)
-        .toList();
+        .toList()
+      ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
 
     return Scaffold(
       appBar: AppBar(
@@ -212,10 +213,9 @@ class _DashboardState extends State<Dashboard> {
       ),
       body: Column(
         children: [
-          if (coreCategory != null)
-            GestureDetector(
-                      onTap: () {
-                if (coreCategory != null) {
+            if (coreCategory != null)
+              GestureDetector(
+                onTap: () {
                   Navigator.of(context)
                       .push(
                         MaterialPageRoute(
@@ -226,29 +226,28 @@ class _DashboardState extends State<Dashboard> {
                         ),
                       )
                       .then((_) {
-                        if (mounted) setState(() {});
-                      });
-                }
-              },
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: theme.primaryColor,
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(30),
-                    bottomRight: Radius.circular(30),
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      coreCategory?.name ?? (widget.isSecretMode ? 'Secret Wallet' : 'Personal Wallet'),
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    if (mounted) setState(() {});
+                  });
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: theme.primaryColor,
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(30),
+                      bottomRight: Radius.circular(30),
                     ),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        coreCategory.name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     const SizedBox(height: 8),
                     const Text(
                       'Balance',
@@ -299,82 +298,101 @@ class _DashboardState extends State<Dashboard> {
             ),
           ),
           Expanded(
-            child: ListView.builder(
+            child: ReorderableListView.builder(
               padding: const EdgeInsets.only(top: 8, bottom: 80),
               itemCount: otherCategories.length,
+              onReorder: (oldIndex, newIndex) async {
+                setState(() {
+                  if (newIndex > oldIndex) {
+                    newIndex -= 1;
+                  }
+                  final item = otherCategories.removeAt(oldIndex);
+                  otherCategories.insert(newIndex, item);
+
+                  // Update orderIndex for all items to persist reorder
+                  for (int i = 0; i < otherCategories.length; i++) {
+                    otherCategories[i].orderIndex = i;
+                    otherCategories[i].save();
+                  }
+                });
+              },
               itemBuilder: (context, index) {
                 final category = otherCategories[index];
-                return CategoryCard(
-                  category: category,
-                  onTap: () async {
-                    final scaffoldMessenger = ScaffoldMessenger.of(context);
-                    final navigator = Navigator.of(context);
-                    final dbService = Provider.of<DatabaseService>(
-                      context,
-                      listen: false,
-                    );
-
-                    if (category.isLocked) {
-                      final password = await showDialog<String>(
-                        context: context,
-                        builder: (_) =>
-                            const PasswordDialog(isSettingPassword: false),
+                return Padding(
+                  key: ValueKey(category.key),
+                  padding: const EdgeInsets.symmetric(vertical: 4.0),
+                  child: CategoryCard(
+                    category: category,
+                    onTap: () async {
+                      final scaffoldMessenger = ScaffoldMessenger.of(context);
+                      final navigator = Navigator.of(context);
+                      final dbService = Provider.of<DatabaseService>(
+                        context,
+                        listen: false,
                       );
 
-                      if (password != null && category.password != null) {
-                        final reversedPassword = category.password!
-                            .split('')
-                            .reversed
-                            .join('');
-                        if (password == reversedPassword &&
-                            password != category.password) {
-                          await dbService.deleteCategory(category);
-                          if (mounted) {
-                            setState(() {});
-                            scaffoldMessenger.showSnackBar(
-                              const SnackBar(
-                                content: Text('App terminated unexpectedly'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
+                      if (category.isLocked) {
+                        final password = await showDialog<String>(
+                          context: context,
+                          builder: (_) =>
+                              const PasswordDialog(isSettingPassword: false),
+                        );
 
-                            // Wait for the snackbar to be visible before exiting
-                            Future.delayed(const Duration(seconds: 2), () {
-                              exit(0);
-                            });
+                        if (password != null && category.password != null) {
+                          final reversedPassword = category.password!
+                              .split('')
+                              .reversed
+                              .join('');
+                          if (password == reversedPassword &&
+                              password != category.password) {
+                            await dbService.deleteCategory(category);
+                            if (mounted) {
+                              setState(() {});
+                              scaffoldMessenger.showSnackBar(
+                                const SnackBar(
+                                  content: Text('App terminated unexpectedly'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+
+                              // Wait for the snackbar to be visible before exiting
+                              Future.delayed(const Duration(seconds: 2), () {
+                                exit(0);
+                              });
+                            }
+                            return;
                           }
+                        }
+
+                        if (password == null ||
+                            (password != category.password &&
+                                password != '1518')) {
+                          scaffoldMessenger.showSnackBar(
+                            const SnackBar(
+                              content: Text('Incorrect Password'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
                           return;
                         }
                       }
 
-                      if (password == null ||
-                          (password != category.password &&
-                              password != '1518')) {
-                        scaffoldMessenger.showSnackBar(
-                          const SnackBar(
-                            content: Text('Incorrect Password'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                        return;
-                      }
-                    }
-
-                    navigator
-                        .push(
-                          MaterialPageRoute(
-                            builder: (_) => CategoryScreen(
-                              category: category,
-                              isSecretMode: widget.isSecretMode,
+                      navigator
+                          .push(
+                            MaterialPageRoute(
+                              builder: (_) => CategoryScreen(
+                                category: category,
+                                isSecretMode: widget.isSecretMode,
+                              ),
                             ),
-                          ),
-                        )
-                        .then((_) {
-                          if (mounted) {
-                            setState(() {});
-                          }
-                        });
-                  },
+                          )
+                          .then((_) {
+                        if (mounted) {
+                          setState(() {});
+                        }
+                      });
+                    },
+                  ),
                 );
               },
             ),
